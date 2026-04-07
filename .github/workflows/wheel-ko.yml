@@ -1,4 +1,4 @@
-name: wheel-strategy-intc
+name: wheel-strategy-ko
 
 on:
   schedule:
@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: wheel-strategy-intc
+  group: wheel-strategy-ko
   cancel-in-progress: false
 
 jobs:
@@ -32,11 +32,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Restore wheel_state.json from wheel-state-intc branch
+      - name: Restore wheel_state.json from wheel-state-ko branch
         run: |
           set -e
-          git fetch origin wheel-state-intc 2>/dev/null || echo "no wheel-state-intc branch yet"
-          if git show origin/wheel-state-intc:wheel_state.json > wheel_state.json 2>/dev/null; then
+          git fetch origin wheel-state-ko 2>/dev/null || echo "no wheel-state-ko branch yet"
+          if git show origin/wheel-state-ko:wheel_state.json > wheel_state.json 2>/dev/null; then
             echo "Restored prior state:"
             cat wheel_state.json
           else
@@ -49,10 +49,10 @@ jobs:
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
           ALPACA_PAPER: "true"
-          SYMBOL: INTC
+          SYMBOL: KO
         run: python wheel_strategy.py
 
-      - name: Persist wheel_state.json to wheel-state-intc branch
+      - name: Persist wheel_state.json to wheel-state-ko branch
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -65,11 +65,11 @@ jobs:
           tmpdir=$(mktemp -d)
           cp wheel_state.json "$tmpdir/"
           cd "$tmpdir"
-          git init -q -b wheel-state-intc
+          git init -q -b wheel-state-ko
           git config user.name "wheel-bot"
           git config user.email "wheel-bot@users.noreply.github.com"
           git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git add wheel_state.json
-          git commit -q -m "state INTC $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git push -f origin wheel-state-intc
-          echo "State persisted to wheel-state-intc branch"
+          git commit -q -m "state KO $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push -f origin wheel-state-ko
+          echo "State persisted to wheel-state-ko branch"
