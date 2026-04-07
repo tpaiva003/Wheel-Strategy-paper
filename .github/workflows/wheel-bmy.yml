@@ -1,0 +1,75 @@
+name: wheel-strategy-bmy
+
+on:
+  schedule:
+    # Every 15 minutes, weekdays, 13:00-21:59 UTC.
+    # Covers US market hours (09:30-16:00 ET) under both EST (UTC-5) and EDT (UTC-4).
+    # The bot itself checks market clock and is a no-op outside RTH.
+    - cron: "*/15 13-21 * * 1-5"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wheel-strategy-bmy
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore wheel_state.json from wheel-state-bmy branch
+        run: |
+          set -e
+          git fetch origin wheel-state-bmy 2>/dev/null || echo "no wheel-state-bmy branch yet"
+          if git show origin/wheel-state-bmy:wheel_state.json > wheel_state.json 2>/dev/null; then
+            echo "Restored prior state:"
+            cat wheel_state.json
+          else
+            echo "No prior state - starting fresh"
+            rm -f wheel_state.json
+          fi
+
+      - name: Run wheel tick
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          ALPACA_PAPER: "true"
+          SYMBOL: BMY
+        run: python wheel_strategy.py
+
+      - name: Persist wheel_state.json to wheel-state-bmy branch
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          if [ ! -f wheel_state.json ]; then
+            echo "No state file produced; nothing to persist"
+            exit 0
+          fi
+          tmpdir=$(mktemp -d)
+          cp wheel_state.json "$tmpdir/"
+          cd "$tmpdir"
+          git init -q -b wheel-state-bmy
+          git config user.name "wheel-bot"
+          git config user.email "wheel-bot@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git add wheel_state.json
+          git commit -q -m "state BMY $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push -f origin wheel-state-bmy
+          echo "State persisted to wheel-state-bmy branch"
