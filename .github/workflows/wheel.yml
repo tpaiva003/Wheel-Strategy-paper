@@ -40,7 +40,7 @@ jobs:
             echo "Restored prior state:"
             cat wheel_state.json
           else
-            echo "No prior state \u2014 starting fresh"
+            echo "No prior state - starting fresh"
             rm -f wheel_state.json
           fi
 
