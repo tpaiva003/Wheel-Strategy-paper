@@ -217,6 +217,44 @@ class Broker:
         except Exception:
             return False
 
+    # --- safety: detect any short put on an underlying, regardless of state file ---
+    def existing_short_put(self, underlying: str) -> Optional[dict]:
+        """Return dict {symbol, qty, avg_entry_price} of any existing short put
+        on the given underlying, or None. Used as a safety net so the bot never
+        sells a duplicate put even if the persisted state file is missing or stale.
+        """
+        try:
+            positions = self.trading.get_all_positions()
+        except Exception as e:
+            LOG.warning("Could not list positions for safety check: %s", e)
+            return None
+        for p in positions:
+            symbol = getattr(p, "symbol", "") or ""
+            if not symbol.startswith(underlying):
+                continue
+            # OCC symbol layout: {underlying}{YYMMDD}{P|C}{strike*1000 padded to 8}
+            rest = symbol[len(underlying):]
+            if len(rest) < 15 or rest[6] not in ("P", "C"):
+                continue
+            if rest[6] != "P":
+                continue
+            try:
+                qty = float(p.qty)
+            except Exception:
+                continue
+            if qty >= 0:
+                continue
+            try:
+                avg = float(p.avg_entry_price)
+            except Exception:
+                avg = 0.0
+            return {
+                "symbol": symbol,
+                "qty": int(abs(qty)),
+                "avg_entry_price": avg,
+            }
+        return None
+
 
 # ---------------------------------------------------------------------------
 # Strategy core
@@ -229,7 +267,9 @@ class Wheel:
 
     # ----- reconciliation -----
     def reconcile(self) -> None:
-        """Detect assignment / call-away by reconciling positions with state."""
+        """Detect assignment / call-away by reconciling positions with state.
+        Also adopts any orphan short put on the underlying that the state file
+        does not track (safety net against lost state)."""
         shares = self.broker.shares_held(self.symbol)
 
         if self.state.open_option_symbol:
@@ -241,6 +281,22 @@ class Wheel:
                 self.state.open_option_side = None
                 self.state.open_option_premium = 0.0
                 self.state.open_option_qty = 0
+
+        # Safety: if the state file says no open option but the broker shows a
+        # short put on this underlying, adopt it. This prevents duplicate sells
+        # when persisted state is missing or stale.
+        if not self.state.open_option_symbol:
+            orphan = self.broker.existing_short_put(self.symbol)
+            if orphan:
+                LOG.warning("Adopting orphan short put from broker: %s qty=%d avg=%.2f",
+                            orphan["symbol"], orphan["qty"], orphan["avg_entry_price"])
+                self.state.open_option_symbol = orphan["symbol"]
+                self.state.open_option_side = "put"
+                self.state.open_option_premium = orphan["avg_entry_price"]
+                self.state.open_option_qty = orphan["qty"]
+                self.state.total_premium_collected += (
+                    orphan["avg_entry_price"] * orphan["qty"] * CONTRACT_MULTIPLIER
+                )
 
         if shares >= 100 and self.state.stage != "SELL_CALL":
             avg = self.broker.position_avg_cost(self.symbol) or self.broker.stock_price(self.symbol)
@@ -287,6 +343,25 @@ class Wheel:
     def try_sell_put(self) -> None:
         if self.state.open_option_symbol:
             return
+
+        # Safety net: even if state says empty, re-check the broker right before
+        # selling. If a short put already exists on this underlying, adopt it
+        # instead of creating a duplicate.
+        orphan = self.broker.existing_short_put(self.symbol)
+        if orphan:
+            LOG.warning("try_sell_put aborting: broker already has short put %s "
+                        "qty=%d avg=%.2f; adopting into state",
+                        orphan["symbol"], orphan["qty"], orphan["avg_entry_price"])
+            self.state.open_option_symbol = orphan["symbol"]
+            self.state.open_option_side = "put"
+            self.state.open_option_premium = orphan["avg_entry_price"]
+            self.state.open_option_qty = orphan["qty"]
+            self.state.total_premium_collected += (
+                orphan["avg_entry_price"] * orphan["qty"] * CONTRACT_MULTIPLIER
+            )
+            self.state.save()
+            return
+
         price = self.broker.stock_price(self.symbol)
         target_strike = price * (1 - PUT_OTM_PCT)
         contract = self.broker.find_contract(
