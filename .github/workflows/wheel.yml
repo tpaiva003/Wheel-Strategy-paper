@@ -2,10 +2,12 @@ name: wheel-strategy-intc
 
 on:
   schedule:
-    # Every 15 minutes, weekdays, 13:00-21:59 UTC.
+    # Every 15 minutes (off-peak offsets), weekdays, 13:00-21:59 UTC.
+    # Minutes 7/22/37/52 avoid GitHub Actions high-load windows at :00/:15/:30/:45
+    # which frequently cause schedule delays or skipped runs.
     # Covers US market hours (09:30-16:00 ET) under both EST (UTC-5) and EDT (UTC-4).
     # The bot itself checks market clock and is a no-op outside RTH.
-    - cron: "*/15 13-21 * * 1-5"
+    - cron: "7,22,37,52 13-21 * * 1-5"
   workflow_dispatch: {}
 
 permissions:
