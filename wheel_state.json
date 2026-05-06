@@ -1,0 +1,11 @@
+{
+  "stage": "SELL_PUT",
+  "open_option_symbol": "INTC260522P00097000",
+  "open_option_side": "put",
+  "open_option_premium": 3.25,
+  "open_option_qty": 1,
+  "cost_basis": null,
+  "total_premium_collected": 2175.0,
+  "last_summary_date": "2026-05-05",
+  "cycles_completed": 0
+}
