@@ -1,0 +1,11 @@
+{
+  "stage": "SELL_PUT",
+  "open_option_symbol": null,
+  "open_option_side": null,
+  "open_option_premium": 0.0,
+  "open_option_qty": 0,
+  "cost_basis": null,
+  "total_premium_collected": 200.0,
+  "last_summary_date": "2026-04-27",
+  "cycles_completed": 0
+}
