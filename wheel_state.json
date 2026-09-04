@@ -1,0 +1,11 @@
+{
+  "stage": "SELL_CALL",
+  "open_option_symbol": "INTC260918C00013000",
+  "open_option_side": "call",
+  "open_option_premium": 77.48,
+  "open_option_qty": 1,
+  "cost_basis": 1.86,
+  "total_premium_collected": 29880.0,
+  "last_summary_date": "2026-08-24",
+  "cycles_completed": 1
+}
