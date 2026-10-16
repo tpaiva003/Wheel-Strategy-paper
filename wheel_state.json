@@ -1,0 +1,11 @@
+{
+  "stage": "SELL_PUT",
+  "open_option_symbol": "BMY261030P00054000",
+  "open_option_side": "put",
+  "open_option_premium": 0.18,
+  "open_option_qty": 1,
+  "cost_basis": null,
+  "total_premium_collected": 2409.0,
+  "last_summary_date": "2026-10-13",
+  "cycles_completed": 0
+}
