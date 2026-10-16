@@ -1,0 +1,11 @@
+{
+  "stage": "SELL_PUT",
+  "open_option_symbol": "KO261030P00084000",
+  "open_option_side": "put",
+  "open_option_premium": 0.11,
+  "open_option_qty": 1,
+  "cost_basis": null,
+  "total_premium_collected": 490.0,
+  "last_summary_date": "2026-10-16",
+  "cycles_completed": 0
+}
